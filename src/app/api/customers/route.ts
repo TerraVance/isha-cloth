@@ -4,7 +4,7 @@ import { requireAdmin } from '@/lib/auth';
 
 // GET — Admin: list customers with sorting, search, segmentation for 🔄 Re-engagement Loop
 export async function GET(request: NextRequest) {
-  const authError = requireAdmin(request);
+  const authError = await requireAdmin(request);
   if (authError) return authError;
 
   const { searchParams } = new URL(request.url);
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
 
 // PATCH — Admin: update last_contacted_at (🔄 Re-engagement Loop)
 export async function PATCH(request: NextRequest) {
-  const authError = requireAdmin(request);
+  const authError = await requireAdmin(request);
   if (authError) return authError;
 
   const { customer_ids } = await request.json();

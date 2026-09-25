@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
@@ -21,6 +21,19 @@ export default function CheckoutPage() {
   const [couponLoading, setCouponLoading] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [codEnabled, setCodEnabled] = useState(true);
+
+  // Fetch payment settings
+  useEffect(() => {
+    fetch('/api/settings?key=payment')
+      .then(res => res.json())
+      .then(json => {
+        if (json.data && typeof json.data.codEnabled === 'boolean') {
+          setCodEnabled(json.data.codEnabled);
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   const shipping = cart.subtotal - (cart.coupon?.discountAmount || 0) >= 999 ? 0 : 99;
   const total = cart.subtotal - (cart.coupon?.discountAmount || 0) + shipping;
@@ -106,10 +119,13 @@ export default function CheckoutPage() {
       });
 
       const adminUrl = whatsapp.toAdmin(adminMsg);
-      window.open(adminUrl, '_blank');
 
       clearCart();
-      router.push(`/order-confirmation?orderId=${json.orderId}&total=${json.total}&coupon=${json.couponCode || ''}`);
+      
+      // Open WhatsApp to admin — use location.href so it works on mobile without popup blocking
+      // On mobile: WhatsApp app opens, user taps back → lands on confirmation page
+      // On desktop: WhatsApp Web opens in same tab, user navigates back
+      window.location.href = `/order-confirmation?orderId=${json.orderId}&total=${json.total}&coupon=${json.couponCode || ''}&wa=${encodeURIComponent(adminUrl)}`;
     } catch {
       setErrors({ submit: 'Network error. Please check your connection.' });
       setPlacing(false);
@@ -228,17 +244,19 @@ export default function CheckoutPage() {
                 )}
               </section>
 
-              {/* Payment info */}
-              <section className="checkout-section payment-info" aria-label="Payment information">
-                <h2 className="checkout-section-title">💳 Payment Method</h2>
-                <div className="payment-card">
-                  <span>📱</span>
-                  <div>
-                    <strong>Cash on Delivery (COD)</strong>
-                    <p>Pay when your saree arrives at your doorstep. You will get an order confirmation on WhatsApp.</p>
+              {/* Payment info - Only show if COD is enabled */}
+              {codEnabled && (
+                <section className="checkout-section payment-info" aria-label="Payment information">
+                  <h2 className="checkout-section-title">💳 Payment Method</h2>
+                  <div className="payment-card">
+                    <span>📱</span>
+                    <div>
+                      <strong>Cash on Delivery (COD)</strong>
+                      <p>Pay when your saree arrives at your doorstep. You will get an order confirmation on WhatsApp.</p>
+                    </div>
                   </div>
-                </div>
-              </section>
+                </section>
+              )}
             </div>
 
             {/* === Right: Order Summary === */}
@@ -293,7 +311,7 @@ export default function CheckoutPage() {
                   <><span className="spinner" /> Placing Order…</>
                 ) : (
                   <>
-                    🛍️ Place Order
+                    🛍️ Buy Now
                     <span style={{ opacity: 0.8, fontSize: 'var(--text-sm)' }}>
                       (WhatsApp confirmation)
                     </span>

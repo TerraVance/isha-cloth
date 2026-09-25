@@ -71,8 +71,15 @@ export async function POST(request: NextRequest) {
     const seq = String((count || 0) + 1).padStart(3, '0');
     const orderId = `IV-${dateStr}-${seq}`;
 
-    // --- 6. Calculate shipping ---
-    const shipping = subtotal - discountAmount >= 999 ? 0 : 99;
+    // --- 6. Calculate shipping (fetch from settings) ---
+    const { data: shippingSetting } = await supabaseAdmin
+      .from('store_settings')
+      .select('value')
+      .eq('key', 'shipping')
+      .single();
+    
+    const shippingConfig = shippingSetting?.value || { cost: 99, threshold: 999 };
+    const shipping = subtotal - discountAmount >= shippingConfig.threshold ? 0 : shippingConfig.cost;
     const total = subtotal - discountAmount + shipping;
 
     // --- 7. Create order ---
@@ -160,12 +167,23 @@ export async function POST(request: NextRequest) {
         .eq('id', customer.id);
     }
 
+    // Fetch active coupon to share
+    const { data: shareCoupons } = await supabaseAdmin
+      .from('coupons')
+      .select('code')
+      .eq('is_active', true)
+      .order('discount_percent', { ascending: false })
+      .limit(1);
+      
+    const shareCoupon = shareCoupons && shareCoupons.length > 0 ? shareCoupons[0].code : null;
+
     return Response.json({
       success: true,
       orderId,
       total,
       discountAmount,
-      couponCode: 'ISHA10', // 🔄 Post-Purchase Loop: always share next coupon
+      couponCode: shareCoupon, // 🔄 Post-Purchase Loop: dynamic share coupon
+
     }, { status: 201 });
 
   } catch (err) {
@@ -176,7 +194,7 @@ export async function POST(request: NextRequest) {
 
 // GET — Admin only: list all orders with customer + items
 export async function GET(request: NextRequest) {
-  const authError = requireAdmin(request);
+  const authError = await requireAdmin(request);
   if (authError) return authError;
 
   const { searchParams } = new URL(request.url);

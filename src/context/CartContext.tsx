@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, useState } from 'react';
 import { CartItem, CartState } from '@/types/database';
 
 // ============================================================
@@ -13,6 +13,7 @@ type CartAction =
   | { type: 'APPLY_COUPON'; payload: { code: string; discountPercent: number; discountAmount: number } }
   | { type: 'REMOVE_COUPON' }
   | { type: 'CLEAR_CART' }
+  | { type: 'SET_SHIPPING_CONFIG'; payload: { cost: number; threshold: number } }
   | { type: 'HYDRATE'; payload: CartState };
 
 interface CartContextType {
@@ -29,8 +30,8 @@ interface CartContextType {
 // ============================================================
 // Helpers
 // ============================================================
-const SHIPPING_THRESHOLD = 999;
-const SHIPPING_COST = 99;
+let SHIPPING_THRESHOLD = 999;
+let SHIPPING_COST = 99;
 const CART_STORAGE_KEY = 'isha_vastram_cart';
 
 function calcShipping(subtotal: number, discount: number): number {
@@ -65,6 +66,13 @@ function cartReducer(state: CartState, action: CartAction): CartState {
 
     case 'HYDRATE':
       return action.payload;
+      
+    case 'SET_SHIPPING_CONFIG': {
+      SHIPPING_COST = action.payload.cost;
+      SHIPPING_THRESHOLD = action.payload.threshold;
+      // Recalculate totals with the new shipping config
+      return { ...state, ...calcTotals(state.items, state.coupon) };
+    }
 
     case 'ADD_TO_CART': {
       const existing = state.items.find(i => i.productId === action.payload.productId);
@@ -129,8 +137,11 @@ const CartContext = createContext<CartContextType | null>(null);
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, dispatch] = useReducer(cartReducer, initialState);
 
-  // Hydrate from localStorage on mount
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Hydrate from localStorage and fetch shipping settings on mount
   useEffect(() => {
+    // 1. Hydrate cart
     try {
       const stored = localStorage.getItem(CART_STORAGE_KEY);
       if (stored) {
@@ -139,17 +150,32 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
     } catch {
       // Invalid stored data — ignore
+    } finally {
+      setIsHydrated(true);
     }
+    
+    // 2. Fetch shipping config
+    fetch('/api/settings?key=shipping')
+      .then(res => res.json())
+      .then(json => {
+        if (json.data) {
+          const cost = Number(json.data.cost ?? 99);
+          const threshold = Number(json.data.threshold ?? 999);
+          dispatch({ type: 'SET_SHIPPING_CONFIG', payload: { cost, threshold } });
+        }
+      })
+      .catch(console.error);
   }, []);
 
   // Persist to localStorage on every change
   useEffect(() => {
+    if (!isHydrated) return; // Prevent overwriting with initial empty state
     try {
       localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
     } catch {
       // Storage full — ignore
     }
-  }, [cart]);
+  }, [cart, isHydrated]);
 
   // Sync across tabs
   useEffect(() => {

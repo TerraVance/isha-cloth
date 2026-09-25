@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Password is required' }, { status: 400 });
     }
 
-    const token = loginAdmin(password);
+    const token = await loginAdmin(password);
     if (!token) {
       return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
     }

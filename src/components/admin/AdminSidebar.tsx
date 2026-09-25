@@ -11,6 +11,8 @@ const NAV_ITEMS = [
   { href: '/admin/orders', label: 'Orders', icon: '📦' },
   { href: '/admin/customers', label: 'Customers', icon: '👥' },
   { href: '/admin/testimonials', label: 'Reviews', icon: '⭐' },
+  { href: '/admin/coupons', label: 'Coupons', icon: '🎟️' },
+  { href: '/admin/settings', label: 'Settings', icon: '⚙️' },
   { href: '/admin/finance', label: 'Finance', icon: '💰' },
 ];
 

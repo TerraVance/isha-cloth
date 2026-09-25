@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import DeleteConfirmModal from '@/components/admin/DeleteConfirmModal';
 
 interface Product {
   id: string; name: string; category: string; price: number;
@@ -19,6 +20,9 @@ export default function AdminProductsPage() {
   const [search, setSearch] = useState('');
   const [deleting, setDeleting] = useState<string | null>(null);
   const [restockCounts, setRestockCounts] = useState<Record<string, number>>({});
+  const [deleteModal, setDeleteModal] = useState<{ open: boolean; id: string; name: string; loading: boolean; error: string }>({
+    open: false, id: '', name: '', loading: false, error: '',
+  });
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -49,20 +53,38 @@ export default function AdminProductsPage() {
   }, [products]);
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
-    setDeleting(id);
-    await fetch(`/api/products/${id}`, { method: 'DELETE' });
-    fetchProducts();
+    setDeleteModal({ open: true, id, name, loading: false, error: '' });
+  };
+
+  const confirmDelete = async () => {
+    setDeleteModal(m => ({ ...m, loading: true, error: '' }));
+    setDeleting(deleteModal.id);
+    const res = await fetch(`/api/products/${deleteModal.id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      const msg = res.status === 401
+        ? 'Session expired. Please refresh and log in again.'
+        : json.error || 'Failed to delete product. Please try again.';
+      setDeleteModal(m => ({ ...m, loading: false, error: msg }));
+      setDeleting(null);
+      return;
+    }
+    setDeleteModal({ open: false, id: '', name: '', loading: false, error: '' });
     setDeleting(null);
+    fetchProducts();
   };
 
   const handleToggleStatus = async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === 'active' ? 'draft' : 'active';
-    await fetch(`/api/products/${id}`, {
+    const res = await fetch(`/api/products/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus }),
     });
+    if (!res.ok) {
+      alert('Failed to update product status.');
+      return;
+    }
     fetchProducts();
   };
 
@@ -207,6 +229,17 @@ export default function AdminProductsPage() {
         }
         .category-pill:hover:not(.active) { border-color: var(--color-maroon); color: var(--color-maroon); }
       `}</style>
+
+      <DeleteConfirmModal
+        isOpen={deleteModal.open}
+        title="Delete Product"
+        message="Are you sure you want to permanently delete this product? This action cannot be undone."
+        itemName={deleteModal.name}
+        isDeleting={deleteModal.loading}
+        errorMessage={deleteModal.error}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteModal({ open: false, id: '', name: '', loading: false, error: '' })}
+      />
     </div>
   );
 }

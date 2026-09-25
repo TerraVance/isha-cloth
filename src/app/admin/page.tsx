@@ -53,7 +53,7 @@ export default async function AdminDashboard() {
 
       <div className="admin-content">
         {/* Stats Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 'var(--space-5)', marginBottom: 'var(--space-8)' }}>
+        <div className="admin-stats-grid">
           {[
             { label: 'Total Revenue', value: `₹${stats.revenue.toLocaleString('en-IN')}`, icon: '💰', color: 'var(--color-maroon)' },
             { label: 'Orders Today', value: stats.ordersToday, icon: '📦', color: 'var(--color-info)' },
@@ -125,7 +125,7 @@ export default async function AdminDashboard() {
         </div>
 
         {/* Quick Links */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 'var(--space-5)', marginTop: 'var(--space-8)' }}>
+        <div className="admin-quick-links-grid">
           {[
             { href: '/admin/products/new', icon: '🌸', label: 'Add New Saree', desc: 'Upload product with photos & details' },
             { href: '/admin/testimonials', icon: '⭐', label: 'Review Testimonials', desc: 'Approve customer photos & reviews' },

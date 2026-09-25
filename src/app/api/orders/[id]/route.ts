@@ -4,7 +4,7 @@ import { requireAdmin } from '@/lib/auth';
 
 // PUT — Admin: update order status
 export async function PUT(request: NextRequest, ctx: RouteContext<'/api/orders/[id]'>) {
-  const authError = requireAdmin(request);
+  const authError = await requireAdmin(request);
   if (authError) return authError;
 
   const { id } = await ctx.params;
@@ -28,7 +28,7 @@ export async function PUT(request: NextRequest, ctx: RouteContext<'/api/orders/[
 
 // GET — Admin: get single order detail
 export async function GET(request: NextRequest, ctx: RouteContext<'/api/orders/[id]'>) {
-  const authError = requireAdmin(request);
+  const authError = await requireAdmin(request);
   if (authError) return authError;
 
   const { id } = await ctx.params;

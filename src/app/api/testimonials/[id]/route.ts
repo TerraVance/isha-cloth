@@ -1,10 +1,11 @@
 import { NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth';
+import { revalidatePath } from 'next/cache';
 
 // PUT — Admin: approve/reject/edit testimonial (🔄 Social Proof Loop)
 export async function PUT(request: NextRequest, ctx: RouteContext<'/api/testimonials/[id]'>) {
-  const authError = requireAdmin(request);
+  const authError = await requireAdmin(request);
   if (authError) return authError;
 
   const { id } = await ctx.params;
@@ -18,12 +19,13 @@ export async function PUT(request: NextRequest, ctx: RouteContext<'/api/testimon
     .single();
 
   if (error) return Response.json({ error: error.message }, { status: 400 });
+  revalidatePath('/');
   return Response.json({ data });
 }
 
 // DELETE — Admin: remove testimonial
 export async function DELETE(request: NextRequest, ctx: RouteContext<'/api/testimonials/[id]'>) {
-  const authError = requireAdmin(request);
+  const authError = await requireAdmin(request);
   if (authError) return authError;
 
   const { id } = await ctx.params;
@@ -42,5 +44,6 @@ export async function DELETE(request: NextRequest, ctx: RouteContext<'/api/testi
 
   const { error } = await supabaseAdmin.from('testimonials').delete().eq('id', id);
   if (error) return Response.json({ error: error.message }, { status: 400 });
+  revalidatePath('/');
   return Response.json({ success: true });
 }

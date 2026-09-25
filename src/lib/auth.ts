@@ -1,17 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
+import { SignJWT, jwtVerify } from 'jose';
 
-const JWT_SECRET = process.env.JWT_SECRET!;
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-for-dev-only-change-me';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD!;
 const COOKIE_NAME = 'admin_token';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
+const secretKey = new TextEncoder().encode(JWT_SECRET);
+
 // ============================================================
 // Login — validate password and return JWT
 // ============================================================
-export function loginAdmin(password: string): string | null {
+export async function loginAdmin(password: string): Promise<string | null> {
   if (password !== ADMIN_PASSWORD) return null;
-  return jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '7d' });
+  return await new SignJWT({ role: 'admin' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setExpirationTime('7d')
+    .sign(secretKey);
 }
 
 // ============================================================
@@ -43,12 +48,12 @@ export function clearAdminCookie(response: NextResponse): void {
 // ============================================================
 // Verify admin — returns true if request has valid JWT cookie
 // ============================================================
-export function verifyAdmin(request: NextRequest): boolean {
+export async function verifyAdmin(request: NextRequest): Promise<boolean> {
   try {
     const token = request.cookies.get(COOKIE_NAME)?.value;
     if (!token) return false;
-    const decoded = jwt.verify(token, JWT_SECRET) as { role: string };
-    return decoded.role === 'admin';
+    const { payload } = await jwtVerify(token, secretKey);
+    return payload.role === 'admin';
   } catch {
     return false;
   }
@@ -57,8 +62,9 @@ export function verifyAdmin(request: NextRequest): boolean {
 // ============================================================
 // Middleware helper — returns 401 if not authenticated
 // ============================================================
-export function requireAdmin(request: NextRequest): NextResponse | null {
-  if (!verifyAdmin(request)) {
+export async function requireAdmin(request: NextRequest): Promise<NextResponse | null> {
+  const isValid = await verifyAdmin(request);
+  if (!isValid) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   return null;

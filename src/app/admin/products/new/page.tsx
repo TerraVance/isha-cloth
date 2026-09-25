@@ -11,6 +11,7 @@ const TAG_OPTIONS = ['Festive', 'Bridal', 'Daily Wear', 'Office Wear', 'Party', 
 export default function AddProductPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const posterInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
     name: '', description: '', category: 'Cotton',
@@ -19,10 +20,13 @@ export default function AddProductPage() {
     status: 'active', featured: false,
   });
   const [images, setImages] = useState<string[]>([]);
+  const [posterImage, setPosterImage] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [uploadingPoster, setUploadingPoster] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isDragging, setIsDragging] = useState(false);
+  const [isPosterDragging, setIsPosterDragging] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -54,6 +58,17 @@ export default function AddProductPage() {
     setUploading(false);
   };
 
+  const handlePosterUpload = async (files: FileList) => {
+    setUploadingPoster(true);
+    const fd = new FormData();
+    fd.append('file', files[0]);
+    fd.append('bucket', 'products');
+    const res = await fetch('/api/upload', { method: 'POST', body: fd });
+    const json = await res.json();
+    if (json.url) setPosterImage(json.url);
+    setUploadingPoster(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
@@ -78,6 +93,20 @@ export default function AddProductPage() {
     });
 
     if (res.ok) {
+      const saved = await res.json();
+      // If a poster image was uploaded, create a hero_poster entry
+      if (posterImage && saved.data?.id) {
+        await fetch('/api/posters', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image_url: posterImage,
+            product_id: saved.data.id,
+            title: form.name,
+            sort_order: 0,
+          }),
+        });
+      }
       router.push('/admin/products');
     } else {
       const json = await res.json();
@@ -97,7 +126,7 @@ export default function AddProductPage() {
 
       <div className="admin-content">
         <form onSubmit={handleSubmit}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 'var(--space-8)', alignItems: 'start' }}>
+          <div className="admin-grid">
 
             {/* Left: Product Details */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
@@ -226,6 +255,86 @@ export default function AddProductPage() {
                   )}
                 </div>
               </div>
+
+              {/* ── Poster Image Upload ── */}
+              <div className="card" style={{ padding: 'var(--space-7)', borderTop: '2px solid var(--color-gold-light)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' }}>
+                  <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-xl)', color: 'var(--color-burgundy)' }}>
+                    🖼️ Poster Image
+                  </h2>
+                  <span style={{ fontSize: 'var(--text-xs)', background: 'var(--color-cream-dark)', color: 'var(--color-gold-dark)', padding: '2px 10px', borderRadius: 'var(--radius-full)', fontWeight: 600, letterSpacing: '0.08em' }}>
+                    OPTIONAL
+                  </span>
+                </div>
+                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-gray-500)', marginBottom: 'var(--space-4)', lineHeight: 1.6 }}>
+                  Upload a portrait-style poster for the <strong>homepage scrolling marquee</strong>. Best size: 3:4 ratio (e.g. 600×800px). This will be automatically linked to this saree.
+                </p>
+
+                <input
+                  ref={posterInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  id="poster-upload"
+                  onChange={e => e.target.files && handlePosterUpload(e.target.files)}
+                />
+
+                <div style={{ display: 'flex', gap: 'var(--space-5)', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                  {/* Preview */}
+                  {posterImage && (
+                    <div style={{ position: 'relative', width: 110, height: 146, borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '2px solid var(--color-gold)', flexShrink: 0 }}>
+                      <Image src={posterImage} alt="Poster preview" fill style={{ objectFit: 'cover' }} sizes="110px" />
+                      <button
+                        type="button"
+                        onClick={() => setPosterImage('')}
+                        style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.65)', color: 'white', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        aria-label="Remove poster"
+                      >✕</button>
+                      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.5)', color: 'var(--color-gold-light)', fontSize: 9, textAlign: 'center', padding: '3px 0', letterSpacing: '0.1em' }}>POSTER</div>
+                    </div>
+                  )}
+
+                  {/* Drop zone */}
+                  <div
+                    onDragOver={e => { e.preventDefault(); setIsPosterDragging(true); }}
+                    onDragLeave={() => setIsPosterDragging(false)}
+                    onDrop={e => {
+                      e.preventDefault();
+                      setIsPosterDragging(false);
+                      if (e.dataTransfer.files?.length) handlePosterUpload(e.dataTransfer.files);
+                    }}
+                    onClick={() => posterInputRef.current?.click()}
+                    style={{
+                      flex: 1,
+                      minWidth: 180,
+                      border: `2px dashed ${isPosterDragging ? 'var(--color-gold)' : 'var(--color-gold-light)'}`,
+                      borderRadius: 'var(--radius-lg)',
+                      padding: 'var(--space-6) var(--space-4)',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      background: isPosterDragging ? 'rgba(201,148,42,0.06)' : 'rgba(201,148,42,0.03)',
+                      transition: 'all 0.2s ease',
+                    }}
+                    id="upload-poster-btn"
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Upload poster image"
+                    onKeyDown={e => e.key === 'Enter' && posterInputRef.current?.click()}
+                  >
+                    {uploadingPoster ? (
+                      <><span className="spinner dark" /> <span style={{ marginLeft: 8, color: 'var(--color-gray-500)' }}>Uploading…</span></>
+                    ) : (
+                      <>
+                        <div style={{ fontSize: '2rem', marginBottom: 'var(--space-2)' }}>🖼️</div>
+                        <p style={{ fontWeight: 600, color: isPosterDragging ? 'var(--color-gold-dark)' : 'var(--color-burgundy)', marginBottom: 4, fontSize: 'var(--text-sm)' }}>
+                          {isPosterDragging ? 'Drop poster here!' : posterImage ? 'Replace poster image' : 'Upload poster image'}
+                        </p>
+                        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-400)' }}>Portrait 3:4 ratio — JPG/PNG, max 5MB</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Right: Pricing & Publish */}
@@ -284,16 +393,14 @@ export default function AddProductPage() {
                 </div>
               )}
 
-              <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center' }} disabled={saving} id="save-product-btn">
-                {saving ? <><span className="spinner" /> Saving…</> : '✅ Save Product'}
-              </button>
+
 
               {/* Live Preview (B10) */}
               <div className="card" style={{ padding: 'var(--space-6)', marginTop: 'var(--space-2)' }}>
                 <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-xl)', color: 'var(--color-burgundy)', marginBottom: 'var(--space-4)' }}>
                   Live Preview
                 </h2>
-                <div style={{ pointerEvents: 'none' }}>
+                <div>
                   <SareeCard product={{
                     id: 'preview-123',
                     name: form.name || 'Saree Name',
@@ -311,7 +418,13 @@ export default function AddProductPage() {
                     description: form.description,
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
-                  }} />
+                  }} 
+                  asPreview={true}
+                  customAction={
+                    <button type="submit" className="btn btn-primary btn-lg" id="save-product-btn" disabled={saving} style={{ width: '100%', justifyContent: 'center' }}>
+                      {saving ? <><span className="spinner" /> Saving…</> : '✅ Save Product'}
+                    </button>
+                  } />
                 </div>
               </div>
             </div>

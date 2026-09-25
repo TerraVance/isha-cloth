@@ -17,7 +17,7 @@ const CATEGORIES = [
   { href: '/collection?featured=true', label: 'Featured' },
 ];
 
-const ADMIN_WHATSAPP = process.env.NEXT_PUBLIC_APP_URL ? '' : '919876543210';
+const ADMIN_WHATSAPP = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP || '919209337387';
 
 export default function Footer() {
   const year = new Date().getFullYear();
@@ -122,13 +122,27 @@ export default function Footer() {
 
       <style>{`
         .footer {
-          background: var(--color-burgundy);
-          color: rgba(255,255,255,0.75);
+          background: linear-gradient(180deg, var(--color-burgundy) 0%, var(--color-ink) 100%);
+          color: rgba(253,246,236,0.7);
           margin-top: auto;
+          border-top: 1px solid rgba(201,148,42,0.25);
+          position: relative;
+          overflow: hidden;
+        }
+
+        /* Subtle textile pattern overlay */
+        .footer::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background-image: var(--texture-damask);
+          opacity: 0.3;
+          pointer-events: none;
         }
 
         .footer-main {
           padding: var(--space-16) 0 var(--space-12);
+          position: relative;
         }
 
         .footer-grid {
@@ -144,14 +158,15 @@ export default function Footer() {
           .footer-grid { grid-template-columns: 1fr; gap: var(--space-8); }
         }
 
-        .footer-logo { filter: brightness(0) invert(1); opacity: 0.9; }
+        .footer-logo { filter: brightness(0) invert(1); opacity: 0.85; }
 
         .footer-tagline {
-          font-family: var(--font-heading);
+          font-family: 'Cormorant Garamond', Georgia, serif;
           font-style: italic;
           color: var(--color-gold-light);
           margin: var(--space-3) 0 var(--space-2);
-          font-size: var(--text-sm);
+          font-size: var(--text-base);
+          letter-spacing: 0.05em;
         }
 
         .footer-desc {
@@ -164,17 +179,18 @@ export default function Footer() {
         .footer-whatsapp { margin-top: var(--space-2); width: fit-content; }
 
         .footer-col-title {
-          font-family: var(--font-heading);
-          font-size: var(--text-lg);
+          font-family: 'Cormorant Garamond', Georgia, serif;
+          font-size: var(--text-xl);
           color: var(--color-gold-light);
           font-weight: 600;
           margin-bottom: var(--space-5);
+          letter-spacing: 0.05em;
         }
 
         .footer-link {
           display: block;
           font-size: var(--text-sm);
-          color: rgba(255,255,255,0.7);
+          color: rgba(253,246,236,0.6);
           padding: var(--space-1) 0;
           transition: all var(--transition-fast);
           text-decoration: none;
@@ -202,8 +218,9 @@ export default function Footer() {
         .footer-contact-item svg { flex-shrink: 0; margin-top: 2px; opacity: 0.7; }
 
         .footer-bottom {
-          border-top: 1px solid rgba(255,255,255,0.1);
+          border-top: 1px solid rgba(201,148,42,0.15);
           padding: var(--space-5) 0;
+          position: relative;
         }
 
         .footer-bottom-inner {

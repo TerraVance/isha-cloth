@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { CartProvider } from '@/context/CartContext';
 import { ToastProvider } from '@/context/ToastContext';
-import FloatingWhatsApp from '@/components/ui/FloatingWhatsApp';
+import WhatsAppFAB from '@/components/ui/WhatsAppFAB';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -29,8 +29,6 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const waPhone = process.env.ADMIN_WHATSAPP_NUMBER || '919999999999';
-
   return (
     <html lang="en">
       <head>
@@ -48,7 +46,7 @@ export default function RootLayout({
         <ToastProvider>
           <CartProvider>
             {children}
-            <FloatingWhatsApp phone={waPhone} />
+            <WhatsAppFAB />
           </CartProvider>
         </ToastProvider>
       </body>

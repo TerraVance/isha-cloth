@@ -11,9 +11,11 @@ export default function FeaturedSarees({ products }: FeaturedSareesProps) {
   return (
     <section className="section featured-section" aria-labelledby="featured-title">
       <div className="container">
-        <p className="section-tagline">Handpicked For You</p>
+        <p className="section-tagline">✦ Handpicked For You ✦</p>
         <h2 className="section-title" id="featured-title">Featured Collection</h2>
-        <div className="section-divider" />
+        <div className="section-divider-inner">
+          <span style={{ color: 'var(--color-gold)', fontSize: '1.25rem' }}>❧</span>
+        </div>
 
         {products.length === 0 ? (
           <div className="featured-empty animate-fade-in-up">
@@ -24,9 +26,6 @@ export default function FeaturedSarees({ products }: FeaturedSareesProps) {
             <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-gray-500)', maxWidth: 400, margin: '0 auto var(--space-6)', lineHeight: 1.7 }}>
               Our exquisite saree collection is being curated. Check back soon or browse what&apos;s available!
             </p>
-            <Link href="/collection" className="btn btn-outline btn-md">
-              Browse Collection →
-            </Link>
           </div>
         ) : (
           /* C3: Scroll-snap carousel on mobile, grid on desktop */
@@ -51,14 +50,15 @@ export default function FeaturedSarees({ products }: FeaturedSareesProps) {
 
       <style>{`
         .featured-section {
-          background: var(--color-white);
+          background: var(--color-cream-paper);
+          background-image: var(--texture-damask);
         }
         .section-tagline {
           text-align: center;
-          font-size: var(--text-sm);
-          font-weight: 600;
-          letter-spacing: 0.15em;
-          text-transform: uppercase;
+          font-family: 'Cormorant Garamond', Georgia, serif;
+          font-size: var(--text-base);
+          font-style: italic;
+          letter-spacing: 0.12em;
           color: var(--color-gold-dark);
           margin-bottom: var(--space-2);
         }

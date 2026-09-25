@@ -4,9 +4,9 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import HeroSection from '@/components/home/HeroSection';
 import FeaturedSarees from '@/components/home/FeaturedSarees';
-import CategoriesSection from '@/components/home/CategoriesSection';
+import HeroPosterMarquee from '@/components/home/HeroPosterMarquee';
 import Testimonials from '@/components/home/Testimonials';
-import WhatsAppFAB from '@/components/ui/WhatsAppFAB';
+
 
 export const metadata: Metadata = {
   title: 'Isha Vastram — Pure Cotton Handloom Sarees',
@@ -17,13 +17,37 @@ export const metadata: Metadata = {
 export const revalidate = 300;
 
 async function getFeaturedProducts() {
-  const { data } = await supabaseAdmin
+  // First try to get explicitly featured products
+  const { data: featuredData } = await supabaseAdmin
     .from('products')
     .select('*')
     .eq('status', 'active')
     .eq('featured', true)
     .order('created_at', { ascending: false })
     .limit(8);
+
+  if (featuredData && featuredData.length > 0) {
+    return featuredData;
+  }
+
+  // Fallback: if no featured products, just show the latest active products
+  const { data: latestData } = await supabaseAdmin
+    .from('products')
+    .select('*')
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(8);
+    
+  return latestData || [];
+}
+
+async function getActivePosters() {
+  const { data } = await supabaseAdmin
+    .from('hero_posters')
+    .select('*, product:products(id, name, images)')
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true });
   return data || [];
 }
 
@@ -48,20 +72,52 @@ async function getStats() {
   };
 }
 
+async function getPublicCoupon() {
+  const { data } = await supabaseAdmin
+    .from('coupons')
+    .select('*')
+    .eq('is_active', true)
+    .order('discount_percent', { ascending: false });
+
+  if (!data) return null;
+
+  const valid = data.filter(c => {
+    if (c.expires_at && new Date(c.expires_at) < new Date()) return false;
+    if (c.max_uses !== null && c.times_used >= c.max_uses) return false;
+    return true;
+  });
+
+  return valid[0] || null;
+}
+
+async function getHeroImage() {
+  const { data } = await supabaseAdmin
+    .from('store_settings')
+    .select('value')
+    .eq('key', 'hero_image')
+    .single();
+  
+  return data?.value?.url || '/images/hero-model.jpg';
+}
+
 export default async function HomePage() {
-  const [featuredProducts, testimonials, stats] = await Promise.all([
+  const [featuredProducts, testimonials, stats, posters, heroImage, activeCoupon] = await Promise.all([
     getFeaturedProducts(),
     getApprovedTestimonials(),
     getStats(),
+    getActivePosters(),
+    getHeroImage(),
+    getPublicCoupon(),
   ]);
 
   return (
     <>
       <Navbar />
       <main id="main-content">
-        <HeroSection stats={stats} />
+        <HeroSection stats={stats} heroImage={heroImage} />
+        <HeroPosterMarquee posters={posters} />
         <FeaturedSarees products={featuredProducts} />
-        <CategoriesSection />
+
 
         {/* Why Choose Us */}
         <section className="section why-section" aria-labelledby="why-title">
@@ -93,24 +149,26 @@ export default async function HomePage() {
         <Testimonials testimonials={testimonials} />
 
         {/* Loop CTA — Post Purchase Loop Banner */}
-        <section className="loop-cta-section" aria-label="Special offer">
-          <div className="container">
-            <div className="loop-cta-inner">
-              <div>
-                <h2 className="loop-cta-title">Share & Save Together 🎁</h2>
-                <p className="loop-cta-desc">
-                  Order any saree and get code <strong>ISHA10</strong> — 10% off for you and your friends!
-                </p>
+        {activeCoupon && (
+          <section className="loop-cta-section" aria-label="Special offer">
+            <div className="container">
+              <div className="loop-cta-inner">
+                <div>
+                  <h2 className="loop-cta-title">Share & Save Together 🎁</h2>
+                  <p className="loop-cta-desc">
+                    Order any saree and use code <strong>{activeCoupon.code}</strong> — {activeCoupon.discount_percent}% off for you and your friends!
+                  </p>
+                </div>
+                <a href="/collection" className="btn btn-gold btn-lg loop-cta-btn">
+                  Shop & Get {activeCoupon.discount_percent}% Off →
+                </a>
               </div>
-              <a href="/collection" className="btn btn-gold btn-lg loop-cta-btn">
-                Shop & Get Coupon →
-              </a>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
       </main>
       <Footer />
-      <WhatsAppFAB />
+
 
       <style>{`
         .why-section { background: var(--color-white); }

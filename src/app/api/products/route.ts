@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth';
+import { revalidatePath } from 'next/cache';
 
 // GET — Public: list active products with filters
 export async function GET(request: NextRequest) {
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
 
 // POST — Admin only: create product
 export async function POST(request: NextRequest) {
-  const authError = requireAdmin(request);
+  const authError = await requireAdmin(request);
   if (authError) return authError;
 
   try {
@@ -66,6 +67,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) return Response.json({ error: error.message }, { status: 400 });
+    revalidatePath('/');
     return Response.json({ data }, { status: 201 });
   } catch {
     return Response.json({ error: 'Invalid request body' }, { status: 400 });

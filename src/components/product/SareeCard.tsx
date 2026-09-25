@@ -10,9 +10,11 @@ import { useState } from 'react';
 interface SareeCardProps {
   product: Product;
   showAddToCart?: boolean;
+  customAction?: React.ReactNode;
+  asPreview?: boolean;
 }
 
-export default function SareeCard({ product, showAddToCart = true }: SareeCardProps) {
+export default function SareeCard({ product, showAddToCart = true, customAction, asPreview = false }: SareeCardProps) {
   const { addToCart, isInCart } = useCart();
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
@@ -71,13 +73,16 @@ export default function SareeCard({ product, showAddToCart = true }: SareeCardPr
     });
   };
 
+  const CardWrapper = asPreview ? 'div' : Link;
+  const wrapperProps = asPreview ? {} : { href: `/saree/${product.id}` };
+
   return (
-    <Link
-      href={`/saree/${product.id}`}
+    <CardWrapper
+      {...wrapperProps as any}
       className="saree-card"
       aria-label={`View ${product.name}`}
-      ref={cardRef}
-      onMouseMove={handleMouseMove}
+      ref={cardRef as any}
+      onMouseMove={handleMouseMove as any}
       onMouseLeave={handleMouseLeave}
       style={tiltStyle}
     >
@@ -124,8 +129,10 @@ export default function SareeCard({ product, showAddToCart = true }: SareeCardPr
           )}
         </div>
 
-        {/* Add to Cart */}
-        {showAddToCart && (
+        {/* Add to Cart / Custom Action */}
+        {customAction ? (
+          customAction
+        ) : showAddToCart && (
           <button
             onClick={handleAddToCart}
             disabled={isOutOfStock}
@@ -152,7 +159,7 @@ export default function SareeCard({ product, showAddToCart = true }: SareeCardPr
       </div>
 
       <style>{`
-        .saree-card { transform-style: preserve-3d; will-change: transform; }
+        .saree-card { transform-style: preserve-3d; will-change: transform; display: block; text-decoration: none; color: inherit; }
         .saree-card-img { transition: transform var(--transition-slow); }
         .saree-card:hover .saree-card-img { transform: scale(1.08); }
 
@@ -210,7 +217,7 @@ export default function SareeCard({ product, showAddToCart = true }: SareeCardPr
           cursor: not-allowed;
         }
       `}</style>
-    </Link>
+    </CardWrapper>
   );
 }
 

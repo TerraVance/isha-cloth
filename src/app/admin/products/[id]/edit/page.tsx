@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import SareeCard from '@/components/product/SareeCard';
+import DeleteConfirmModal from '@/components/admin/DeleteConfirmModal';
 
 const CATEGORIES = ['Cotton', 'Silk', 'Banarasi', 'Paithani', 'Chanderi', 'Kanjivaram', 'Linen', 'Georgette'];
 const TAG_OPTIONS = ['Festive', 'Bridal', 'Daily Wear', 'Office Wear', 'Party', 'Traditional', 'Summer', 'Wedding'];
@@ -27,6 +28,7 @@ export default function EditProductPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [deleting, setDeleting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [deleteModal, setDeleteModal] = useState({ open: false, loading: false, error: '' });
 
   // Fetch existing product data
   useEffect(() => {
@@ -37,7 +39,12 @@ export default function EditProductPage() {
         router.push('/admin/products');
         return;
       }
-      const product = await res.json();
+      const json = await res.json();
+      const product = json.data ?? json; // API returns { data: {...} }
+      if (!product || !product.id) {
+        router.push('/admin/products');
+        return;
+      }
       setForm({
         name: product.name || '',
         description: product.description || '',
@@ -119,9 +126,22 @@ export default function EditProductPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm(`Permanently delete "${form.name}"? This cannot be undone.`)) return;
+    setDeleteModal({ open: true, loading: false, error: '' });
+  };
+
+  const confirmDelete = async () => {
+    setDeleteModal({ open: true, loading: true, error: '' });
     setDeleting(true);
-    await fetch(`/api/products/${productId}`, { method: 'DELETE' });
+    const res = await fetch(`/api/products/${productId}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      const msg = res.status === 401
+        ? 'Session expired. Please refresh and log in again.'
+        : json.error || 'Failed to delete product. Please try again.';
+      setDeleteModal({ open: true, loading: false, error: msg });
+      setDeleting(false);
+      return;
+    }
     router.push('/admin/products');
   };
 
@@ -160,7 +180,7 @@ export default function EditProductPage() {
 
       <div className="admin-content">
         <form onSubmit={handleSubmit}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 'var(--space-8)', alignItems: 'start' }}>
+          <div className="admin-grid">
 
             {/* Left: Product Details */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
@@ -349,16 +369,14 @@ export default function EditProductPage() {
                 </div>
               )}
 
-              <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center' }} disabled={saving} id="update-product-btn">
-                {saving ? <><span className="spinner" /> Updating…</> : '✅ Save Changes'}
-              </button>
+
 
               {/* Live Preview (B10) */}
               <div className="card" style={{ padding: 'var(--space-6)', marginTop: 'var(--space-2)' }}>
                 <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-xl)', color: 'var(--color-burgundy)', marginBottom: 'var(--space-4)' }}>
                   Live Preview
                 </h2>
-                <div style={{ pointerEvents: 'none' }}>
+                <div>
                   <SareeCard product={{
                     id: productId,
                     name: form.name || 'Saree Name',
@@ -376,7 +394,13 @@ export default function EditProductPage() {
                     description: form.description,
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
-                  }} />
+                  }} 
+                  asPreview={true}
+                  customAction={
+                    <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center' }} disabled={saving} id="update-product-btn">
+                      {saving ? <><span className="spinner" /> Updating…</> : '✅ Save Changes'}
+                    </button>
+                  } />
                 </div>
               </div>
             </div>
@@ -396,6 +420,17 @@ export default function EditProductPage() {
         .tag-pill.active { background: var(--color-maroon); border-color: var(--color-maroon); color: white; }
         .tag-pill:hover:not(.active) { border-color: var(--color-maroon); color: var(--color-maroon); }
       `}</style>
+
+      <DeleteConfirmModal
+        isOpen={deleteModal.open}
+        title="Delete Product"
+        message="This will permanently remove the product and all its data. This cannot be undone."
+        itemName={form.name}
+        isDeleting={deleteModal.loading}
+        errorMessage={deleteModal.error}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteModal({ open: false, loading: false, error: '' })}
+      />
     </div>
   );
 }

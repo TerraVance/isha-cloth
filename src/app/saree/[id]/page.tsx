@@ -15,7 +15,7 @@ import SareeCard from '@/components/product/SareeCard';
 export default function SareeDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { addToCart, isInCart } = useCart();
+  const { addToCart, isInCart, applyCoupon, removeCoupon } = useCart();
   const toast = useToast();
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -25,6 +25,12 @@ export default function SareeDetailPage() {
   const [addingToCart, setAddingToCart] = useState(false);
   const [added, setAdded] = useState(false);
   const [qty, setQty] = useState(1);
+
+  // Coupon
+  const [couponOpen, setCouponOpen] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponStatus, setCouponStatus] = useState<{ valid: boolean; message: string; discountPercent?: number; discountAmount?: number } | null>(null);
 
   // Restock notification form
   const [showNotify, setShowNotify] = useState(false);
@@ -65,6 +71,31 @@ export default function SareeDetailPage() {
       setAdded(true);
       toast.success(`${product.name} added to cart!`);
     }, 500);
+  };
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim() || !product) return;
+    setCouponLoading(true);
+    setCouponStatus(null);
+    try {
+      const subtotal = product.price * qty;
+      const res = await fetch('/api/coupons/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: couponCode.trim(), subtotal }),
+      });
+      const json = await res.json();
+      if (json.valid) {
+        applyCoupon(couponCode.toUpperCase().trim(), json.discountPercent, json.discountAmount);
+        setCouponStatus({ valid: true, message: json.message, discountPercent: json.discountPercent, discountAmount: json.discountAmount });
+      } else {
+        setCouponStatus({ valid: false, message: json.reason });
+      }
+    } catch {
+      setCouponStatus({ valid: false, message: 'Could not validate coupon. Try again.' });
+    } finally {
+      setCouponLoading(false);
+    }
   };
 
   // 🔄 Viral Loop: Share button
@@ -214,11 +245,75 @@ export default function SareeDetailPage() {
 
               {/* Price */}
               <div className="detail-price">
-                <span className="detail-price-current">₹{product.price.toLocaleString('en-IN')}</span>
-                {product.compare_price && (
+                <span className="detail-price-current">
+                  {couponStatus?.valid && couponStatus.discountAmount
+                    ? `₹${(product.price * qty - couponStatus.discountAmount).toLocaleString('en-IN')}`
+                    : `₹${product.price.toLocaleString('en-IN')}`}
+                </span>
+                {couponStatus?.valid && couponStatus.discountAmount ? (
+                  <span className="detail-price-original">₹{(product.price * qty).toLocaleString('en-IN')}</span>
+                ) : product.compare_price ? (
                   <span className="detail-price-original">₹{product.compare_price.toLocaleString('en-IN')}</span>
+                ) : null}
+                {couponStatus?.valid && couponStatus.discountPercent
+                  ? <span className="detail-price-save">Coupon: {couponStatus.discountPercent}% off</span>
+                  : discount
+                  ? <span className="detail-price-save">Save {discount}%</span>
+                  : null}
+              </div>
+
+              {/* 🎟️ Coupon Widget */}
+              <div className="coupon-widget">
+                {!couponStatus?.valid ? (
+                  <button
+                    type="button"
+                    className="coupon-toggle"
+                    onClick={() => setCouponOpen(o => !o)}
+                    aria-expanded={couponOpen}
+                  >
+                    🎟️ Have a coupon code?
+                    <span className="coupon-toggle-arrow" style={{ transform: couponOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</span>
+                  </button>
+                ) : (
+                  <div className="coupon-applied">
+                    <span>🎉 {couponStatus.message}</span>
+                    <button
+                      type="button"
+                      onClick={() => { removeCoupon(); setCouponStatus(null); setCouponCode(''); setCouponOpen(false); }}
+                      className="coupon-remove"
+                    >
+                      ✕ Remove
+                    </button>
+                  </div>
                 )}
-                {discount && <span className="detail-price-save">Save {discount}%</span>}
+
+                {couponOpen && !couponStatus?.valid && (
+                  <div className="coupon-input-wrap">
+                    <input
+                      type="text"
+                      className="input coupon-input"
+                      placeholder="Enter code e.g. SAVE20"
+                      value={couponCode}
+                      onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                      onKeyDown={e => e.key === 'Enter' && handleApplyCoupon()}
+                      maxLength={30}
+                      style={{ fontFamily: 'monospace', letterSpacing: '0.08em', fontWeight: 600 }}
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-md"
+                      onClick={handleApplyCoupon}
+                      disabled={couponLoading || !couponCode.trim()}
+                      id="apply-coupon-btn"
+                    >
+                      {couponLoading ? <span className="spinner" /> : 'Apply'}
+                    </button>
+                  </div>
+                )}
+
+                {couponStatus && !couponStatus.valid && (
+                  <p className="coupon-error">{couponStatus.message}</p>
+                )}
               </div>
 
               {/* Stock indicator */}
@@ -577,6 +672,79 @@ export default function SareeDetailPage() {
           font-size: var(--text-sm);
           color: var(--color-success);
           font-weight: 500;
+        }
+
+        /* ── COUPON WIDGET ───────────────────────────────── */
+        .coupon-widget {
+          margin-bottom: var(--space-5);
+          border: 1px solid var(--color-gold-light);
+          border-radius: var(--radius-lg);
+          overflow: hidden;
+          background: rgba(201,148,42,0.03);
+        }
+
+        .coupon-toggle {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
+          padding: var(--space-3) var(--space-4);
+          background: none;
+          border: none;
+          cursor: pointer;
+          font-size: var(--text-sm);
+          font-weight: 600;
+          color: var(--color-gold-dark);
+          transition: background 0.15s ease;
+        }
+        .coupon-toggle:hover { background: rgba(201,148,42,0.06); }
+
+        .coupon-toggle-arrow {
+          font-size: 1rem;
+          transition: transform 0.2s ease;
+          display: inline-block;
+        }
+
+        .coupon-input-wrap {
+          display: flex;
+          gap: var(--space-2);
+          padding: var(--space-3) var(--space-4);
+          border-top: 1px solid var(--color-gold-light);
+          background: white;
+        }
+        .coupon-input { flex: 1; }
+
+        .coupon-applied {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: var(--space-3) var(--space-4);
+          background: rgba(22,163,74,0.06);
+          border: none;
+          font-size: var(--text-sm);
+          font-weight: 600;
+          color: var(--color-success);
+        }
+
+        .coupon-remove {
+          background: none;
+          border: none;
+          cursor: pointer;
+          font-size: var(--text-xs);
+          color: var(--color-error);
+          font-weight: 600;
+          padding: var(--space-1) var(--space-2);
+          border-radius: var(--radius-sm);
+          transition: background 0.15s;
+        }
+        .coupon-remove:hover { background: var(--color-error-light); }
+
+        .coupon-error {
+          font-size: var(--text-xs);
+          color: var(--color-error);
+          padding: var(--space-2) var(--space-4);
+          background: var(--color-error-light);
+          margin: 0;
         }
       `}</style>
     </>

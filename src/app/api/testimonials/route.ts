@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth';
+import { revalidatePath } from 'next/cache';
 
 // GET — Public: fetch approved testimonials (🔄 Social Proof Loop)
 // Admin: fetch all (approved + pending)
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
 
 // POST — Admin: create/upload a testimonial
 export async function POST(request: NextRequest) {
-  const authError = requireAdmin(request);
+  const authError = await requireAdmin(request);
   if (authError) return authError;
 
   const body = await request.json();
@@ -43,5 +44,6 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) return Response.json({ error: error.message }, { status: 400 });
+  revalidatePath('/');
   return Response.json({ data }, { status: 201 });
 }

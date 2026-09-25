@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import DeleteConfirmModal from '@/components/admin/DeleteConfirmModal';
 
 interface Testimonial {
   id: string; customer_name: string; customer_phone: string | null;
@@ -15,6 +16,9 @@ export default function AdminTestimonialsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved'>('pending');
   const [updating, setUpdating] = useState<string | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{ open: boolean; id: string; name: string; loading: boolean; error: string }>({
+    open: false, id: '', name: '', loading: false, error: '',
+  });
 
   const fetchTestimonials = async () => {
     setLoading(true);
@@ -31,19 +35,38 @@ export default function AdminTestimonialsPage() {
 
   const handleApprove = async (id: string) => {
     setUpdating(id);
-    await fetch(`/api/testimonials/${id}`, {
+    const res = await fetch(`/api/testimonials/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_approved: true }),
     });
+    if (!res.ok) {
+      alert('Failed to approve testimonial.');
+      setUpdating(null);
+      return;
+    }
     fetchTestimonials();
     setUpdating(null);
   };
 
-  const handleReject = async (id: string) => {
-    if (!confirm('Delete this testimonial? This cannot be undone.')) return;
-    setUpdating(id);
-    await fetch(`/api/testimonials/${id}`, { method: 'DELETE' });
+  const handleReject = async (id: string, name: string) => {
+    setDeleteModal({ open: true, id, name, loading: false, error: '' });
+  };
+
+  const confirmDelete = async () => {
+    setDeleteModal(m => ({ ...m, loading: true, error: '' }));
+    setUpdating(deleteModal.id);
+    const res = await fetch(`/api/testimonials/${deleteModal.id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      const msg = res.status === 401
+        ? 'Session expired. Please refresh and log in again.'
+        : json.error || 'Failed to delete testimonial. Please try again.';
+      setDeleteModal(m => ({ ...m, loading: false, error: msg }));
+      setUpdating(null);
+      return;
+    }
+    setDeleteModal({ open: false, id: '', name: '', loading: false, error: '' });
     fetchTestimonials();
     setUpdating(null);
   };
@@ -123,7 +146,7 @@ export default function AdminTestimonialsPage() {
                         {updating === t.id ? <span className="spinner" /> : '✅ Approve'}
                       </button>
                       <button
-                        onClick={() => handleReject(t.id)}
+                        onClick={() => handleReject(t.id, t.customer_name)}
                         className="btn btn-sm btn-outline"
                         style={{ flex: 1, color: 'var(--color-error)', borderColor: 'var(--color-error)', justifyContent: 'center' }}
                         disabled={updating === t.id}
@@ -134,7 +157,7 @@ export default function AdminTestimonialsPage() {
                   ) : (
                     <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
                       <span style={{ color: 'var(--color-success)', fontWeight: 600, fontSize: 'var(--text-sm)' }}>✅ Published on homepage</span>
-                      <button onClick={() => handleReject(t.id)} className="btn btn-sm" style={{ color: 'var(--color-error)' }}>Remove</button>
+                      <button onClick={() => handleReject(t.id, t.customer_name)} className="btn btn-sm" style={{ color: 'var(--color-error)' }}>Remove</button>
                     </div>
                   )}
                 </div>
@@ -166,6 +189,17 @@ export default function AdminTestimonialsPage() {
         }
         .testimonial-admin-card:hover { box-shadow: var(--shadow-md); }
       `}</style>
+
+      <DeleteConfirmModal
+        isOpen={deleteModal.open}
+        title="Delete Testimonial"
+        message="Are you sure you want to permanently delete this review? This action cannot be undone."
+        itemName={deleteModal.name}
+        isDeleting={deleteModal.loading}
+        errorMessage={deleteModal.error}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteModal({ open: false, id: '', name: '', loading: false, error: '' })}
+      />
     </div>
   );
 }

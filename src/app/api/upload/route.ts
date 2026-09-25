@@ -4,7 +4,7 @@ import { requireAdmin } from '@/lib/auth';
 
 // POST — Admin: upload image to Supabase Storage
 export async function POST(request: NextRequest) {
-  const authError = requireAdmin(request);
+  const authError = await requireAdmin(request);
   if (authError) return authError;
 
   try {
