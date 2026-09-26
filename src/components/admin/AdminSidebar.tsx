@@ -34,9 +34,9 @@ export default function AdminSidebar() {
     <>
       {/* Desktop Sidebar */}
       <aside className="admin-sidebar" role="navigation" aria-label="Admin navigation">
-        <div className="sidebar-logo">
-          <Link href="/" target="_blank" rel="noopener" aria-label="View store">
-            <Image src="/images/logo.png" alt="Isha Vastram" width={120} height={48} style={{ objectFit: 'contain', filter: 'brightness(0) invert(1)', opacity: 0.9 }} />
+        <div className="sidebar-logo" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <Link href="/" target="_blank" rel="noopener" aria-label="View store" style={{ display: 'block', background: 'rgba(255,255,255,0.95)', padding: '0.5rem', borderRadius: '8px', marginBottom: '0.5rem' }}>
+            <Image src="/images/logo.png" alt="Isha Vastram" width={80} height={120} style={{ objectFit: 'contain', height: '60px', width: 'auto', display: 'block' }} />
           </Link>
           <span className="sidebar-admin-badge">Admin</span>
         </div>

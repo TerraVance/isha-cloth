@@ -48,8 +48,8 @@ export default function Navbar() {
               <Image
                 src="/images/logo.png"
                 alt="Isha Vastram"
-                width={140}
-                height={56}
+                width={80}
+                height={120}
                 priority
                 className="navbar-logo-img"
               />
@@ -169,16 +169,17 @@ export default function Navbar() {
         /* ── LOGO ─────────────────────────────────────────────── */
         .navbar-logo { display: flex; align-items: center; flex-shrink: 0; }
         .navbar-logo-img {
-          height: 38px;
+          height: 48px;
           width: auto;
           object-fit: contain;
-          filter: brightness(0) invert(1) sepia(1) saturate(0.5) hue-rotate(0deg) brightness(1.1);
+          border-radius: 6px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
           transition: all var(--transition-normal);
         }
         .navbar-scrolled .navbar-logo-img {
-          filter: none; /* full color when scrolled */
+          box-shadow: 0 1px 4px rgba(0,0,0,0.15);
         }
-        .navbar-logo:hover .navbar-logo-img { transform: scale(1.03); }
+        .navbar-logo:hover .navbar-logo-img { transform: scale(1.04); }
 
         /* ── NAV LINKS ────────────────────────────────────────── */
         .navbar-links {

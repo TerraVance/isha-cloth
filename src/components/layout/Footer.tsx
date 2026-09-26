@@ -31,8 +31,8 @@ export default function Footer() {
               <Image
                 src="/images/logo.png"
                 alt="Isha Vastram"
-                width={140}
-                height={56}
+                width={120}
+                height={180}
                 className="footer-logo"
               />
               <p className="footer-tagline">
@@ -158,7 +158,14 @@ export default function Footer() {
           .footer-grid { grid-template-columns: 1fr; gap: var(--space-8); }
         }
 
-        .footer-logo { filter: brightness(0) invert(1); opacity: 0.85; }
+        .footer-logo { 
+          height: 160px; 
+          width: auto; 
+          object-fit: contain;
+          margin-bottom: var(--space-6);
+          border-radius: 8px;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        }
 
         .footer-tagline {
           font-family: 'Cormorant Garamond', Georgia, serif;
